@@ -2,47 +2,170 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>工時請假專家 Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <title>工時專家</title>
+    
+    <meta name="apple-mobile-web-app-title" content="工時專家">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3652/3652191.png">
+    
     <style>
-        :root { --primary: #007AFF; --bg: #F2F2F7; --card: #FFFFFF; --text: #000000; --danger: #FF3B30; --success: #34C759; --gray: #8E8E93; --secondary: #E9E9EB; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .ios-card { background: var(--card); width: 100%; max-width: 420px; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        h2 { text-align: center; font-size: 20px; margin-bottom: 20px; font-weight: 600; }
-        .ios-group { background: #F9F9F9; border-radius: 12px; padding: 5px 15px; margin-bottom: 15px; }
-        .ios-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #E5E5EA; }
+        :root { 
+            --primary: #007AFF; 
+            --bg: #F2F2F7; 
+            --card: #FFFFFF; 
+            --text: #000000; 
+            --danger: #FF3B30; 
+            --success: #34C759; 
+            --gray: #8E8E93; 
+            --secondary: #E9E9EB; 
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background: var(--bg); 
+            margin: 0; 
+            padding: 20px; 
+            display: flex; 
+            justify-content: center; 
+            color: var(--text);
+        }
+        .ios-card { 
+            background: var(--card); 
+            width: 100%; 
+            max-width: 420px; 
+            border-radius: 20px; 
+            padding: 25px 20px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
+        }
+        h2 { 
+            text-align: center; 
+            font-size: 22px; 
+            margin-top: 0;
+            margin-bottom: 25px; 
+            font-weight: 700; 
+            letter-spacing: 1px;
+            color: var(--primary);
+        }
+        .ios-group { 
+            background: #F9F9F9; 
+            border-radius: 14px; 
+            padding: 5px 15px; 
+            margin-bottom: 20px; 
+        }
+        .ios-item { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 14px 0; 
+            border-bottom: 1px solid #E5E5EA; 
+        }
         .ios-item:last-child { border-bottom: none; }
-        .ios-item label { font-size: 16px; font-weight: 500; }
-        input[type="time"] { border: none; background: var(--secondary); padding: 8px 12px; border-radius: 8px; font-size: 17px; color: var(--primary); font-weight: 600; font-family: inherit; }
+        .ios-item label { font-size: 16px; font-weight: 600; color: #3A3A3C; }
+        input[type="time"] { 
+            border: none; 
+            background: var(--secondary); 
+            padding: 10px 14px; 
+            border-radius: 10px; 
+            font-size: 17px; 
+            color: var(--primary); 
+            font-weight: 700; 
+            font-family: inherit; 
+            cursor: pointer;
+        }
         
-        .btn-row { display: flex; gap: 10px; margin-top: 10px; }
-        button.ios-btn { flex: 2; background: var(--primary); color: white; border: none; border-radius: 14px; padding: 16px; font-size: 17px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
-        button.ios-btn-secondary { flex: 1; background: var(--secondary); color: var(--text); border: none; border-radius: 14px; padding: 16px; font-size: 17px; font-weight: 500; cursor: pointer; }
+        .btn-row { display: flex; gap: 12px; margin-top: 15px; }
+        button.ios-btn { 
+            flex: 2; 
+            background: var(--primary); 
+            color: white; 
+            border: none; 
+            border-radius: 14px; 
+            padding: 16px; 
+            font-size: 17px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            transition: opacity 0.2s; 
+        }
+        button.ios-btn-secondary { 
+            flex: 1; 
+            background: var(--secondary); 
+            color: #3A3A3C; 
+            border: none; 
+            border-radius: 14px; 
+            padding: 16px; 
+            font-size: 17px; 
+            font-weight: 600; 
+            cursor: pointer; 
+        }
         button:active { opacity: 0.7; }
 
-        .section-title { font-size: 13px; color: var(--gray); font-weight: 600; margin: 20px 0 8px 5px; text-transform: uppercase; }
-        .ios-box { background: white; border-radius: 14px; padding: 15px; margin-bottom: 12px; border: 1px solid #E5E5EA; animation: fadeIn 0.3s ease; }
-        .res-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-        .res-label { font-weight: 600; color: #3A3A3C; }
-        .res-val { font-weight: 700; color: var(--primary); font-size: 18px; }
-        .leave-badge { background: #FFF0F0; color: var(--danger); padding: 10px; border-radius: 10px; margin-top: 10px; font-size: 14px; line-height: 1.5; }
-        .leave-range { display: block; font-family: monospace; font-weight: bold; background: #FFE5E5; padding: 2px 6px; border-radius: 4px; margin-top: 4px; }
+        .section-title { 
+            font-size: 13px; 
+            color: var(--gray); 
+            font-weight: 700; 
+            margin: 25px 0 8px 5px; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+        }
+        .ios-box { 
+            background: white; 
+            border-radius: 16px; 
+            padding: 18px; 
+            margin-bottom: 15px; 
+            border: 1px solid #E5E5EA; 
+            animation: fadeIn 0.4s ease; 
+        }
+        .res-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 5px; 
+        }
+        .res-label { font-weight: 600; color: #3A3A3C; font-size: 16px; }
+        .res-val { font-weight: 700; color: var(--primary); font-size: 19px; }
+        .leave-badge { 
+            background: #FFF0F0; 
+            color: var(--danger); 
+            padding: 12px; 
+            border-radius: 12px; 
+            margin-top: 12px; 
+            font-size: 14px; 
+            line-height: 1.6; 
+        }
+        .leave-range { 
+            display: inline-block; 
+            font-family: monospace; 
+            font-weight: bold; 
+            background: #FFE5E5; 
+            padding: 4px 8px; 
+            border-radius: 6px; 
+            margin-top: 6px; 
+            font-size: 15px;
+        }
         .success-text { color: var(--success); font-weight: bold; }
-        .info-text { font-size: 12px; color: var(--gray); margin-top: 5px; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .info-text { font-size: 13px; color: var(--gray); margin-top: 6px; font-weight: 500;}
+        
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(10px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
     </style>
 </head>
 <body>
 
 <div class="ios-card">
-    <h2>工時查詢系統</h2>
+    <h2>工時專家</h2>
     <div class="ios-group">
         <div class="ios-item">
             <label>🕗 上班刷卡</label>
-            <input type="time" id="tIn" value="09:08">
+            <input type="time" id="tIn" value="09:00">
         </div>
         <div class="ios-item">
-            <label>🏃 提早下班 (最低16:50)</label>
+            <label>🏃 提早下班 <span style="font-size:12px; color:#8E8E93; font-weight:normal;">(最低16:50)</span></label>
             <input type="time" id="tEarly">
         </div>
     </div>
@@ -56,29 +179,36 @@
 </div>
 
 <script>
+    // 清除按鈕功能
     function clearAll() {
-        document.getElementById('tIn').value = "";
+        document.getElementById('tIn').value = "09:00"; // 預設回到九點
         document.getElementById('tEarly').value = "";
         document.getElementById('result').innerHTML = "";
     }
 
+    // 主邏輯運算
     function run() {
         const tIn = document.getElementById('tIn').value;
         const tEarly = document.getElementById('tEarly').value;
-        if (!tIn) return;
+        if (!tIn) {
+            alert("請先輸入上班刷卡時間！");
+            return;
+        }
 
         const toMin = (v) => { let [h, m] = v.split(':').map(Number); return h * 60 + m; };
         const toStr = (m) => { return `${Math.floor(m/60).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`; };
 
         const inMin = toMin(tIn);
-        const earliestOff = 16 * 60 + 50; // 16:50
-        const deadline = 18 * 60 + 20;   // 18:20
-        const latestIn = 9 * 60 + 20;     // 09:20
-        const lunch = 60;
+        const earliestOff = 16 * 60 + 50; // 最早下班 16:50
+        const deadline = 18 * 60 + 20;    // 加班封頂 18:20
+        const latestIn = 9 * 60 + 20;     // 彈性上限 09:20
+        const lunch = 60;                 // 固定午休 60 分鐘
         
         let html = "";
 
-        // 1. 遲到檢查
+        // ==========================================
+        // 1. 遲到檢查 (超過 09:20)
+        // ==========================================
         if (inMin > latestIn) {
             let lateM = inMin - latestIn;
             let leaveH = Math.ceil(lateM / 30) * 0.5;
@@ -90,18 +220,24 @@
                      </div>`;
         }
 
-        // 2. 標準分析
+        // ==========================================
+        // 2. 標準下班分析 (8小時 / 7小時)
+        // ==========================================
         function getGoal(targetH) {
             let targetM = targetH * 60;
+            // 預計下班時間不能早於 16:50
             let idealOff = Math.max(earliestOff, inMin + targetM + lunch);
             let res = `<div class="ios-box"><div class="res-row"><span class="res-label">滿 ${targetH} 小時</span>`;
             
             if (idealOff <= deadline) {
+                // 順利在 18:20 前達標
                 res += `<span class="res-val success-text">${toStr(idealOff)}</span></div>`;
+                // 若工時滿了，但受限於 16:50 規定
                 if (idealOff === earliestOff && (inMin + targetM + lunch) < earliestOff) {
-                    res += `<div class="info-text">💡 已滿 ${targetH}h，但受限於 16:50 規定。</div>`;
+                    res += `<div class="info-text">💡 已滿 ${targetH}h，但受限於最早 16:50 下班規定。</div>`;
                 }
             } else {
+                // 待到 18:20 仍然不足
                 let actualWorkAtDeadline = deadline - inMin - lunch;
                 let gap = targetM - actualWorkAtDeadline;
                 let leaveH = Math.ceil(gap / 30) * 0.5;
@@ -114,31 +250,39 @@
         }
         html += `<div class="section-title">📊 標準下班時間</div>` + getGoal(8) + getGoal(7);
 
-        // 3. 提早下班分析
+        // ==========================================
+        // 3. 提早下班分析 (若有填寫)
+        // ==========================================
         if (tEarly) {
             let earlyMinInput = toMin(tEarly);
             let isViolating = earlyMinInput < earliestOff;
+            
+            // 提早下班時間：不能早於 16:50，不能晚於 18:20
             let realEarlyMin = Math.max(earliestOff, Math.min(earlyMinInput, deadline));
             
             html += `<div class="section-title">🏃 提早下班分析 (${toStr(earlyMinInput)})</div><div class="ios-box" style="border-left: 5px solid var(--primary)">`;
             
-            if (isViolating) html += `<div style="color:var(--danger); font-weight:bold; margin-bottom:10px;">⚠️ 警告：早於 16:50 規定時間</div>`;
+            if (isViolating) {
+                html += `<div style="color:var(--danger); font-weight:bold; margin-bottom:12px; font-size:15px;">⚠️ 警告：早於 16:50 規定時間</div>`;
+            }
 
+            // 計算到提早下班時間為止的實際工時
             let workMin = realEarlyMin - inMin - lunch;
-            let gap7 = 420 - workMin;
+            let gap7 = 420 - workMin; // 以滿足最低標 7 小時為基準
             
             if (gap7 <= 0) {
                 html += `<div class="success-text">✨ 此時間下班已滿足 7 小時最低標</div>`;
             } else {
                 let leaveH = Math.ceil(gap7 / 30) * 0.5;
                 html += `<div class="res-row"><span class="res-label">需補假單時數</span><span class="res-val" style="color:var(--danger)">${leaveH}h</span></div>`;
-                html += `<div class="leave-badge">建議請假區間 (刷卡點往前推)：<br>`;
+                html += `<div class="leave-badge">建議請假區間 (由刷卡點往前推)：<br>`;
                 html += `<span class="leave-range">單據區間：${toStr(inMin - leaveH*60)} - ${toStr(inMin)}</span>`;
                 html += `</div>`;
             }
             html += `</div>`;
         }
 
+        // 將結果渲染至畫面
         document.getElementById('result').innerHTML = html;
     }
 </script>
