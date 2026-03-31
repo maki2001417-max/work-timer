@@ -91,12 +91,12 @@
 
     <div class="ios-group">
         <div class="ios-item">
-            <label>🕗 上班刷卡 <span class="hint">(08:50 - 18:20)</span></label>
-            <input type="time" id="tIn" value="09:00" onchange="validateAndRun(this)" oninput="run()">
+            <label>🕗 上班刷卡 <span class="hint">(08:50 - 17:20)</span></label>
+            <input type="time" id="tIn" value="09:00" min="08:50" max="17:20" onchange="validateAndRun(this)" oninput="run()">
         </div>
         <div class="ios-item">
-            <label>🏃 提早下班 <span class="hint">(≥16:50)</span></label>
-            <input type="time" id="tEarly" onchange="validateAndRun(this)" oninput="run()">
+            <label>🏃 提早下班 <span class="hint">(16:50 - 18:20)</span></label>
+            <input type="time" id="tEarly" min="16:50" max="18:20" onchange="validateAndRun(this)" oninput="run()">
         </div>
     </div>
 
@@ -110,12 +110,10 @@
         toast.textContent = msg;
         toast.classList.add('show');
         clearTimeout(toastTimeout);
-        toastTimeout = setTimeout(() => {
-            toast.classList.remove('show');
-        }, 2500);
+        toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 2500);
     }
 
-    // 智慧防呆校正功能
+    // 分流防呆：針對上班與下班給予不同極限
     function validateAndRun(inputElement) {
         if (!inputElement.value) { run(); return; }
         
@@ -124,17 +122,26 @@
         let corrected = null;
         let alertMsg = "";
 
-        if (mins < 530) { 
-            corrected = "08:50"; 
-            alertMsg = "⚠️ 最早不可早於 08:50，已為您校正";
-        } else if (mins > 710 && mins < 770) {
-            // 落入午休時間，判斷靠近哪一邊
-            if (mins <= 740) { corrected = "11:50"; } 
-            else { corrected = "12:50"; }
-            alertMsg = "⚠️ 午休時間不計入，已為您自動避開";
-        } else if (mins > 1100) { 
-            corrected = "18:20"; 
-            alertMsg = "⚠️ 最晚不可超過 18:20，已為您校正";
+        if (inputElement.id === 'tIn') {
+            if (mins < 530) { 
+                corrected = "08:50"; 
+                alertMsg = "⚠️ 上班不可早於 08:50，已為您校正";
+            } else if (mins > 710 && mins < 770) {
+                if (mins <= 740) { corrected = "11:50"; } 
+                else { corrected = "12:50"; }
+                alertMsg = "⚠️ 午休時間不計入，已為您自動避開";
+            } else if (mins >= 1040) { // 超過 17:20，當作直接曠職整天
+                corrected = "17:20"; 
+                alertMsg = "⚠️ 已過標準下班時間，建議直接請全天假！";
+            }
+        } else if (inputElement.id === 'tEarly') {
+            if (mins < 1010) { 
+                corrected = "16:50";
+                alertMsg = "⚠️ 提早下班最低需滿 16:50，已自動校正";
+            } else if (mins > 1100) { 
+                corrected = "18:20";
+                alertMsg = "⚠️ 最晚不可超過 18:20，已自動校正";
+            }
         }
 
         if (corrected) {
@@ -142,7 +149,7 @@
             showToast(alertMsg);
         }
         
-        run(); // 校正完畢後執行主計算
+        run(); 
     }
 
     function clearAll() {
@@ -242,14 +249,21 @@
                 `<span class="badge">${toStr(l.s)} - ${toStr(l.e)} <span class="dur-tag">${l.h}h</span></span>`
             ).join('');
             
-            let hintMsg = inMin > tLunchStart 
-                ? "💡 曠職上午喪失彈性，由標準班表 08:20 往後請。" 
-                : "💡 彈性內扣除假單後，以此推算下班時間。";
+            let isFullDay = (inMin >= 1040); // >= 17:20 就是全天假
+            
+            let hintMsg = "";
+            if (isFullDay) {
+                hintMsg = "💡 已達標準下班時間 17:20，請直接填寫整天假單 (8h)。";
+            } else if (inMin > tLunchStart) {
+                hintMsg = "💡 曠職上午喪失彈性，由標準班表 08:20 往後請。";
+            } else {
+                hintMsg = "💡 彈性內扣除假單後，以此推算下班時間。";
+            }
 
             html += `
             <div class="alert-box late">
                 <div class="alert-title red">
-                    <span>⚠️ 遲到 ${lateMins} 分鐘</span>
+                    <span>${isFullDay ? '🚨 需請全天假' : `⚠️ 遲到 ${lateMins} 分鐘`}</span>
                     <span>請假 <span class="hl">${totalLateLeaveH}</span>h</span>
                 </div>
                 <div class="flex-row">
@@ -258,6 +272,12 @@
                 </div>
                 <div class="sub-hint">${hintMsg}</div>
             </div>`;
+            
+            // 如果已經請全天假，直接結束函數，不用顯示後面的 7h/8h 跟提早下班了
+            if (isFullDay) {
+                document.getElementById('result').innerHTML = html;
+                return;
+            }
         }
 
         // === 2. 並排標準時間 ===
