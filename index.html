@@ -46,12 +46,13 @@
         .alert-title.red { color: var(--danger); }
         .alert-title.orange { color: #D07B00; }
         
-        .badge { display: inline-block; font-family: monospace; font-weight: bold; background: rgba(0,0,0,0.05); padding: 4px 8px; border-radius: 6px; font-size: 15px; color: #333; }
+        .badge { display: inline-flex; align-items: center; font-family: monospace; font-weight: bold; background: rgba(0,0,0,0.05); padding: 4px 8px; border-radius: 6px; font-size: 15px; color: #333; }
         .hl { font-weight: 800; font-size: 16px; }
         .sub-hint { font-size: 12px; color: #666; margin-top: 8px; }
 
         .flex-row { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 8px; font-size: 14px;}
         .range-group { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+        .dur-tag { color: #E65100; font-size: 13px; margin-left: 6px; background: rgba(230,81,0,0.1); padding: 2px 5px; border-radius: 4px; font-family: -apple-system, sans-serif;}
     </style>
 </head>
 <body>
@@ -65,7 +66,7 @@
     <div class="ios-group">
         <div class="ios-item">
             <label>🕗 上班刷卡</label>
-            <input type="time" id="tIn" value="09:00" oninput="run()" onchange="run()">
+            <input type="time" id="tIn" value="14:00" oninput="run()" onchange="run()">
         </div>
         <div class="ios-item">
             <label>🏃 提早下班 <span class="hint">(≥16:50)</span></label>
@@ -85,14 +86,12 @@
 
     const toStr = (m) => `${Math.floor(m/60).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`;
 
-    // 時間常數定義 (基於 08:20 基準班表)
-    const tBaseIn = 500;       // 08:20 (標準上班)
-    const tFlexEnd = 560;      // 09:20 (彈性死線)
+    const tBaseIn = 500;       // 08:20
+    const tFlexEnd = 560;      // 09:20
     const tLunchStart = 710;   // 11:50
     const tLunchEnd = 770;     // 12:50
-    const tEarliestOff = 1010; // 16:50 (最早下班)
+    const tEarliestOff = 1010; // 16:50
 
-    // 時間軸：往前推 (自動跳過午休)
     function walkBwd(startMin, durationMin) {
         let current = startMin;
         let rem = durationMin;
@@ -109,7 +108,6 @@
         return current;
     }
 
-    // 時間軸：往後推 (自動跳過午休)
     function walkFwd(startMin, durationMin) {
         let current = startMin;
         let rem = durationMin;
@@ -126,16 +124,22 @@
         return current;
     }
 
-    // 格式化假單 (自動切斷午休並產生兩段 UI)
+    // 更新：加入每段假單的 (Xh) 標示
     function formatLeaveRanges(start, end) {
         let ranges = [];
         if (start < tLunchStart && end > start) {
             let e = Math.min(end, tLunchStart);
-            if (start !== e) ranges.push(`<span class="badge">${toStr(start)} - ${toStr(e)}</span>`);
+            if (start !== e) {
+                let h = (e - start) / 60;
+                ranges.push(`<span class="badge">${toStr(start)} - ${toStr(e)} <span class="dur-tag">${h}h</span></span>`);
+            }
         }
         if (end > tLunchEnd && end > start) {
             let s = Math.max(start, tLunchEnd);
-            if (s !== end) ranges.push(`<span class="badge">${toStr(s)} - ${toStr(end)}</span>`);
+            if (s !== end) {
+                let h = (end - s) / 60;
+                ranges.push(`<span class="badge">${toStr(s)} - ${toStr(end)} <span class="dur-tag">${h}h</span></span>`);
+            }
         }
         if (ranges.length === 0) return `<span class="badge">無</span>`;
         return `<div class="range-group">${ranges.join('')}</div>`;
@@ -150,20 +154,26 @@
         const inMin = toMin(tIn);
         
         let html = "";
-        let effectiveIn = inMin; 
+        let mark7, mark8;
 
-        // === 1. 遲到補救 (套用 08:20 基準線) ===
-        if (inMin > tFlexEnd) {
+        // === 1. 遲到補救與基準點判斷 ===
+        if (inMin <= tFlexEnd) {
+            // 彈性時間內：依真實刷卡點計算
+            mark7 = walkFwd(inMin, 7 * 60);
+            mark8 = walkFwd(inMin, 8 * 60);
+        } else {
+            // 遲到喪失彈性：基準點強制鎖死在 08:20
+            mark7 = walkFwd(tBaseIn, 7 * 60); // 16:20
+            mark8 = walkFwd(tBaseIn, 8 * 60); // 17:20
+
             let lateM = inMin - tFlexEnd;
             let leaveH = 0.5;
             let leaveEnd = walkFwd(tBaseIn, leaveH * 60);
             
-            // 只要請假後的虛擬上班點，還沒到達真實刷卡點，就繼續請 0.5h
             while (leaveEnd < inMin) {
                 leaveH += 0.5;
                 leaveEnd = walkFwd(tBaseIn, leaveH * 60);
             }
-            effectiveIn = leaveEnd;
             
             html += `
             <div class="alert-box late">
@@ -180,8 +190,6 @@
         }
 
         // === 2. 並排標準時間 ===
-        const mark7 = walkFwd(effectiveIn, 7 * 60);
-        const mark8 = walkFwd(effectiveIn, 8 * 60);
         const disp7 = Math.max(tEarliestOff, mark7);
         const disp8 = Math.max(tEarliestOff, mark8);
         
@@ -214,7 +222,6 @@
                     let leaveH = 0.5;
                     let leaveStart = walkBwd(targetOff, leaveH * 60);
                     
-                    // 只要請假往前推的時間，還沒碰到你的提早下班點，就繼續請 0.5h
                     while (leaveStart > earlyMin) {
                         leaveH += 0.5;
                         leaveStart = walkBwd(targetOff, leaveH * 60);
