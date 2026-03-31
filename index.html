@@ -198,16 +198,16 @@
     function run() {
         const tIn = document.getElementById('tIn').value;
         const tEarly = document.getElementById('tEarly').value;
-        if (!tIn) return; // 若未輸入上班時間則不動作
+        if (!tIn) return; 
 
         const toMin = (v) => { let [h, m] = v.split(':').map(Number); return h * 60 + m; };
         const toStr = (m) => { return `${Math.floor(m/60).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`; };
 
         const inMin = toMin(tIn);
-        const earliestOff = 16 * 60 + 50; // 最早下班 16:50
-        const deadline = 18 * 60 + 20;    // 加班封頂 18:20
-        const latestIn = 9 * 60 + 20;     // 彈性上限 09:20
-        const lunch = 60;                 // 固定午休 60 分鐘
+        const earliestOff = 16 * 60 + 50; 
+        const deadline = 18 * 60 + 20;    
+        const latestIn = 9 * 60 + 20;     
+        const lunch = 60;                 
         
         let html = "";
 
@@ -252,7 +252,7 @@
         html += `<div class="section-title">📊 標準下班時間</div>` + getGoal(8) + getGoal(7);
 
         // ==========================================
-        // 3. 提早下班分析 (大字體介面)
+        // 3. 提早下班分析 (雙軌假單邏輯)
         // ==========================================
         if (tEarly) {
             let earlyMinInput = toMin(tEarly);
@@ -268,8 +268,25 @@
             } else {
                 let leaveH = Math.ceil(gap7 / 30) * 0.5;
                 let leaveM = leaveH * 60;
-                let virtualIn = inMin - leaveM;
-                let hit7hTime = virtualIn + 420 + lunch;
+                
+                let leaveStart, leaveEnd, hit7hTime, hintText;
+
+                // 【全新邏輯】判斷是否遲到來決定假單區間方向
+                if (inMin <= latestIn) {
+                    // 未遲到：從滿 7 小時的正常下班時間「往回推」
+                    let normal7hOff = inMin + 420 + lunch;
+                    hit7hTime = normal7hOff - leaveM;
+                    leaveStart = hit7hTime;
+                    leaveEnd = normal7hOff;
+                    hintText = "依正常下班時間往回推";
+                } else {
+                    // 遲到：從上班刷卡點「往回推」 (順便抵銷早上的遲到)
+                    let virtualIn = inMin - leaveM;
+                    hit7hTime = virtualIn + 420 + lunch;
+                    leaveStart = virtualIn;
+                    leaveEnd = inMin;
+                    hintText = "因遲到，依刷卡點往前推以抵銷遲到";
+                }
                 
                 html += `
                 <div class="highlight-box">
@@ -279,7 +296,7 @@
                     </div>
                     <div class="highlight-row">
                         <span class="highlight-label">請假單區間</span>
-                        <span class="highlight-range">${toStr(virtualIn)} - ${toStr(inMin)}</span>
+                        <span class="highlight-range">${toStr(leaveStart)} - ${toStr(leaveEnd)}</span>
                     </div>
                 </div>
 
@@ -289,7 +306,8 @@
                 </div>
                 
                 <div class="info-text" style="margin-top: 12px; font-size: 13px; color: #555;">
-                    💡 說明：填寫上方區間的假單後，您當天只要待到 <b>${toStr(hit7hTime)}</b> 即可湊滿 7 小時。
+                    💡 說明：${hintText}。<br>
+                    填寫上方區間的假單後，您當天只要待到 <b>${toStr(hit7hTime)}</b> 即可湊滿 7 小時。
                 </div>
                 `;
             }
@@ -299,16 +317,10 @@
         document.getElementById('result').innerHTML = html;
     }
 
-    // ==========================================
     // 電腦版防誤觸：自動收合與計算監聽器
-    // ==========================================
     const timeInputs = document.querySelectorAll('input[type="time"]');
-    
     timeInputs.forEach(input => {
-        // 當游標離開輸入框時自動計算
         input.addEventListener('change', run);
-        
-        // 電腦版：按下 Enter 鍵強制收起選單並計算
         input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 this.blur(); 
