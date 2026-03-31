@@ -65,12 +65,12 @@
 
     <div class="ios-group">
         <div class="ios-item">
-            <label>🕗 上班刷卡</label>
-            <input type="time" id="tIn" value="09:25" oninput="run()" onchange="run()">
+            <label>🕗 上班刷卡 <span class="hint">(08:50起)</span></label>
+            <input type="time" id="tIn" value="09:00" min="08:50" max="18:20" oninput="run()" onchange="run()">
         </div>
         <div class="ios-item">
-            <label>🏃 提早下班 <span class="hint">(≥16:50)</span></label>
-            <input type="time" id="tEarly" oninput="run()" onchange="run()">
+            <label>🏃 提早下班 <span class="hint">(16:50 - 18:20)</span></label>
+            <input type="time" id="tEarly" min="16:50" max="18:20" oninput="run()" onchange="run()">
         </div>
     </div>
 
@@ -109,7 +109,7 @@
         return current;
     }
 
-    // 計算兩個時間點的「真實工時」 (用來計算早退缺口)
+    // 計算兩個時間點的「真實工時」
     function getWorkMinutes(start, end) {
         if (start >= end) return 0;
         let total = end - start;
@@ -119,7 +119,7 @@
         return total;
     }
 
-    // 將請假區間拆成陣列，並計算每段時數 (供 UI 顯示 Xh)
+    // 將請假區間拆成陣列，並計算每段時數
     function getLeaveChunks(start, end) {
         let chunks = [];
         if (start < tLunchStart && end > start) {
@@ -153,22 +153,17 @@
             lateMins = inMin - tFlexEnd;
             
             if (inMin <= tLunchStart) {
-                // 【狀況 A】上午遲到：只需往前推算到 09:20 內即可合法
                 let leaveH = Math.ceil(lateMins / 30) * 0.5;
                 let virtualIn = inMin - leaveH * 60;
                 
-                shiftStart = virtualIn; // 下班時間由這個合法虛擬點開始算
+                shiftStart = virtualIn; 
                 lateLeaveList.push({ s: virtualIn, e: inMin, h: leaveH });
                 totalLateLeaveH = leaveH;
             } else {
-                // 【狀況 B】曠職整個上午 (下午才來)：強制沒收彈性，鎖死 08:20 基準
-                shiftStart = tBaseIn; // 下班時間被死死鎖定在 08:20 基準
-                
-                // 上午請假固定扣除
+                shiftStart = tBaseIn; 
                 lateLeaveList.push({ s: tBaseIn, e: tLunchStart, h: 3.5 });
                 totalLateLeaveH += 3.5;
                 
-                // 若下午還晚來，繼續累加下午假單
                 if (inMin > tLunchEnd) {
                     let gap = inMin - tLunchEnd;
                     let leaveH = Math.ceil(gap / 30) * 0.5;
@@ -203,8 +198,7 @@
             </div>`;
         }
 
-        // === 2. 並排標準時間 (下班時間正確鎖定不亂延) ===
-        // 永遠基於合法的 shiftStart + 9 小時 (含午休) 計算，確保時間凍結
+        // === 2. 並排標準時間 ===
         const mark7 = shiftStart + 7 * 60 + 60; 
         const mark8 = shiftStart + 8 * 60 + 60;
         
