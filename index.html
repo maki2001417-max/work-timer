@@ -91,12 +91,12 @@
 
     <div class="ios-group">
         <div class="ios-item">
-            <label>🕗 上班刷卡 <span class="hint">(08:50 - 17:20)</span></label>
-            <input type="time" id="tIn" value="09:00" min="08:50" max="17:20" onchange="validateAndRun(this)" oninput="run()">
+            <label>🕗 上班刷卡 <span class="hint">(08:50起)</span></label>
+            <input type="time" id="tIn" value="09:00" max="17:20" onchange="validateAndRun(this)" oninput="run()">
         </div>
         <div class="ios-item">
-            <label>🏃 提早下班 <span class="hint">(16:50 - 18:20)</span></label>
-            <input type="time" id="tEarly" min="16:50" max="18:20" onchange="validateAndRun(this)" oninput="run()">
+            <label>🏃 提早下班 <span class="hint">(最晚18:20)</span></label>
+            <input type="time" id="tEarly" max="18:20" onchange="validateAndRun(this)" oninput="run()">
         </div>
     </div>
 
@@ -113,7 +113,6 @@
         toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 2500);
     }
 
-    // 分流防呆：針對上班與下班給予不同極限
     function validateAndRun(inputElement) {
         if (!inputElement.value) { run(); return; }
         
@@ -130,15 +129,13 @@
                 if (mins <= 740) { corrected = "11:50"; } 
                 else { corrected = "12:50"; }
                 alertMsg = "⚠️ 午休時間不計入，已為您自動避開";
-            } else if (mins >= 1040) { // 超過 17:20，當作直接曠職整天
+            } else if (mins >= 1040) {
                 corrected = "17:20"; 
                 alertMsg = "⚠️ 已過標準下班時間，建議直接請全天假！";
             }
         } else if (inputElement.id === 'tEarly') {
-            if (mins < 1010) { 
-                corrected = "16:50";
-                alertMsg = "⚠️ 提早下班最低需滿 16:50，已自動校正";
-            } else if (mins > 1100) { 
+            // 提早下班不再阻擋小於 16:50 的時間，只防呆最晚不超過 18:20
+            if (mins > 1100) { 
                 corrected = "18:20";
                 alertMsg = "⚠️ 最晚不可超過 18:20，已自動校正";
             }
@@ -218,7 +215,6 @@
         let totalLateLeaveH = 0;
         let lateMins = 0;
 
-        // === 1. 遲到分流邏輯 ===
         if (inMin > tFlexEnd) {
             lateMins = inMin - tFlexEnd;
             
@@ -249,7 +245,7 @@
                 `<span class="badge">${toStr(l.s)} - ${toStr(l.e)} <span class="dur-tag">${l.h}h</span></span>`
             ).join('');
             
-            let isFullDay = (inMin >= 1040); // >= 17:20 就是全天假
+            let isFullDay = (inMin >= 1040); 
             
             let hintMsg = "";
             if (isFullDay) {
@@ -273,14 +269,12 @@
                 <div class="sub-hint">${hintMsg}</div>
             </div>`;
             
-            // 如果已經請全天假，直接結束函數，不用顯示後面的 7h/8h 跟提早下班了
             if (isFullDay) {
                 document.getElementById('result').innerHTML = html;
                 return;
             }
         }
 
-        // === 2. 並排標準時間 ===
         const mark7 = shiftStart + 7 * 60 + 60; 
         const mark8 = shiftStart + 8 * 60 + 60;
         
@@ -301,7 +295,6 @@
             </div>
         </div>`;
 
-        // === 3. 提早下班分析 ===
         if (tEarly) {
             let earlyMin = toMin(tEarly);
             html += `<div class="section-title">🏃 提早分析 (${toStr(earlyMin)})</div>`;
