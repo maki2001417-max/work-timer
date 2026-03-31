@@ -25,14 +25,13 @@
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         h2 { font-size: 22px; margin: 0; font-weight: 700; color: var(--primary); }
         .clear-btn { background: var(--secondary); color: #555; border: none; padding: 6px 12px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
-        .clear-btn:active { opacity: 0.7; }
 
         .ios-group { background: #F9F9F9; border-radius: 14px; padding: 0 15px; margin-bottom: 15px; }
         .ios-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #E5E5EA; }
         .ios-item:last-child { border-bottom: none; }
         .ios-item label { font-size: 15px; font-weight: 600; color: #333; }
         .hint { font-size: 12px; color: var(--gray); font-weight: normal; margin-top: 4px; }
-        input[type="time"] { border: none; background: var(--secondary); padding: 8px 12px; border-radius: 8px; font-size: 17px; color: var(--primary); font-weight: 700; font-family: inherit; cursor: pointer; }
+        input[type="time"] { border: none; background: var(--secondary); padding: 8px 12px; border-radius: 8px; font-size: 17px; color: var(--primary); font-weight: 700; font-family: inherit; }
 
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
         .box-compact { background: #fff; border: 1px solid #E5E5EA; border-radius: 14px; padding: 12px; text-align: center; }
@@ -42,13 +41,14 @@
         
         .alert-box { border-radius: 14px; padding: 12px 15px; margin-bottom: 12px; font-size: 14px; line-height: 1.5; }
         .alert-box.late { background: var(--danger-bg); border-left: 5px solid var(--danger); }
-        .alert-box.early { background: var(--warning-bg); border-left: 5px solid var(--warning); }
+        .alert-box.early { border-left: 5px solid var(--warning); background: #fff; border: 1px solid #E5E5EA; }
         .alert-title { font-weight: 700; font-size: 15px; margin-bottom: 5px; display: flex; justify-content: space-between; }
         .alert-title.red { color: var(--danger); }
         .alert-title.orange { color: #D07B00; }
         
         .badge { display: inline-block; font-family: monospace; font-weight: bold; background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px; font-size: 15px; }
         .hl { font-weight: 800; font-size: 16px; }
+        .sub-hint { font-size: 12px; color: #666; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -65,7 +65,7 @@
             <input type="time" id="tIn" value="09:00" oninput="run()" onchange="run()">
         </div>
         <div class="ios-item">
-            <label>🏃 提早下班 <span class="hint" style="color:#8E8E93">(≥16:50)</span></label>
+            <label>🏃 提早下班 <span class="hint">(≥16:50)</span></label>
             <input type="time" id="tEarly" oninput="run()" onchange="run()">
         </div>
     </div>
@@ -94,14 +94,14 @@
         const lunch = 60;                 
         
         let html = "";
-        let lateLeaveMins = 0; // 記錄遲到扣除的分鐘數
+        let lateLeaveMins = 0;
 
-        // === 1. 遲到警示 (最優先計算) ===
+        // === 1. 遲到補救 ===
         if (inMin > latestIn) {
             let lateM = inMin - latestIn;
             let leaveH = Math.ceil(lateM / 30) * 0.5;
             lateLeaveMins = leaveH * 60;
-            let virtualIn = inMin - lateLeaveMins; // 往前推的「虛擬上班點」
+            let virtualIn = inMin - lateLeaveMins;
             
             html += `
             <div class="alert-box late">
@@ -110,69 +110,70 @@
             </div>`;
         }
 
-        // === 2. 標準下班計算 (基於虛擬上班點) ===
-        // 無論遲到與否，都用有效上班時間 (effectiveIn) 來推算 7h/8h
         const effectiveIn = inMin - lateLeaveMins; 
+        const mark7 = effectiveIn + 7 * 60 + lunch;
+        const mark8 = effectiveIn + 8 * 60 + lunch;
         
-        let mark7 = effectiveIn + 7 * 60 + lunch;
-        let mark8 = effectiveIn + 8 * 60 + lunch;
+        const disp7 = Math.max(earliestOff, mark7);
+        const disp8 = Math.max(earliestOff, mark8);
         
-        let disp7 = Math.max(earliestOff, mark7);
-        let disp8 = Math.max(earliestOff, mark8);
-        
+        // === 2. 並排標準時間 ===
         html += `
         <div class="grid-2">
             <div class="box-compact">
                 <div class="lbl">滿 7h (最低)</div>
                 <div class="val">${toStr(disp7)}</div>
-                ${disp7 === earliestOff && mark7 < earliestOff ? '<div class="hint">受限 16:50 規定</div>' : ''}
+                ${disp7 === earliestOff && mark7 < earliestOff ? '<div class="hint">受限 16:50</div>' : ''}
             </div>
             <div class="box-compact">
                 <div class="lbl">滿 8h (標準)</div>
                 <div class="val blue">${toStr(disp8)}</div>
-                ${disp8 === earliestOff && mark8 < earliestOff ? '<div class="hint">受限 16:50 規定</div>' : ''}
+                ${disp8 === earliestOff && mark8 < earliestOff ? '<div class="hint">受限 16:50</div>' : ''}
             </div>
         </div>`;
 
-        // === 3. 提早下班分析 (由目標時間往回推) ===
+        // === 3. 提早下班分析 (雙目標) ===
         if (tEarly) {
             let earlyMin = toMin(tEarly);
-            // 以滿足 7 小時為首要目標
-            let target7 = Math.max(earliestOff, mark7); 
+            html += `<div class="section-title">🏃 提早分析 (${toStr(earlyMin)})</div>`;
 
-            if (earlyMin >= target7) {
-                html += `<div class="alert-box" style="background:var(--success-bg); border-left:5px solid var(--success); color:#1B5E20; font-weight:700;">✨ 提早下班時間已達 7h 最低標！</div>`;
-            } else {
-                let gap = target7 - earlyMin;
-                let leaveH = Math.ceil(gap / 30) * 0.5;
-                let leaveM = leaveH * 60;
-                
-                // 核心邏輯：從目標下班時間 (target7) 往前扣除請假時數
-                let leaveStart = target7 - leaveM;
-                let leaveEnd = target7;
+            function generateLeaveInfo(targetOff, label, isTarget8) {
+                if (earlyMin >= targetOff) {
+                    return `<div class="alert-box" style="background:var(--success-bg); border-left:5px solid var(--success); color:#1B5E20; font-weight:700; margin-bottom:10px;">✨ 已滿足 ${label} 目標</div>`;
+                } else {
+                    let gap = targetOff - earlyMin;
+                    let leaveH = Math.ceil(gap / 30) * 0.5;
+                    let leaveM = leaveH * 60;
+                    
+                    // 邏輯：從目標下班時間往回推
+                    let leaveStart = targetOff - leaveM;
+                    let leaveEnd = targetOff;
+                    let hitTime = targetOff - leaveM; // 實質下班時間
 
-                html += `
-                <div class="alert-box early">
-                    <div class="alert-title orange">
-                        <span>🏃 湊滿 7h 分析 (${toStr(earlyMin)})</span>
-                        <span>下午請假 <span class="hl" style="color:var(--danger)">${leaveH}</span>h</span>
-                    </div>
-                    假單區間：<span class="badge">${toStr(leaveStart)} - ${toStr(leaveEnd)}</span><br>
-                    <div class="hint" style="margin-top:6px; color:#666;">💡 說明：由目標下班時間 (${toStr(target7)}) 往前推。</div>
-                </div>`;
+                    return `
+                    <div class="alert-box early" style="margin-bottom:10px;">
+                        <div class="alert-title orange">
+                            <span>🎯 目標 ${label}</span>
+                            <span>下午請假 <span class="hl" style="color:var(--danger)">${leaveH}</span>h</span>
+                        </div>
+                        假單區間：<span class="badge">${toStr(leaveStart)} - ${toStr(leaveEnd)}</span><br>
+                        <div class="sub-hint">💡 請假後，只要待到 <b style="color:var(--primary)">${toStr(hitTime)}</b> 即可達標</div>
+                    </div>`;
+                }
             }
+
+            html += generateLeaveInfo(disp7, "7h (最低)");
+            html += generateLeaveInfo(disp8, "8h (標準)");
         }
 
         document.getElementById('result').innerHTML = html;
     }
 
     document.querySelectorAll('input[type="time"]').forEach(input => {
-        input.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') this.blur(); 
-        });
+        input.addEventListener('keydown', function(e) { if (e.key === 'Enter') this.blur(); });
     });
 
-    run(); // 初始載入預算
+    run();
 </script>
 
 </body>
