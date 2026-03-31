@@ -53,9 +53,35 @@
         .flex-row { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 8px; font-size: 14px;}
         .range-group { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
         .dur-tag { color: #E65100; font-size: 13px; margin-left: 6px; background: rgba(230,81,0,0.1); padding: 2px 5px; border-radius: 4px; font-family: -apple-system, sans-serif;}
+
+        /* App 質感提示浮窗 (Toast) */
+        #toast {
+            position: fixed;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 9999;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            white-space: nowrap;
+        }
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
     </style>
 </head>
 <body>
+
+<div id="toast">提示訊息</div>
 
 <div class="ios-card">
     <div class="header-row">
@@ -65,12 +91,12 @@
 
     <div class="ios-group">
         <div class="ios-item">
-            <label>🕗 上班刷卡 <span class="hint">(08:50起)</span></label>
-            <input type="time" id="tIn" value="09:00" min="08:50" max="18:20" oninput="run()" onchange="run()">
+            <label>🕗 上班刷卡 <span class="hint">(08:50 - 18:20)</span></label>
+            <input type="time" id="tIn" value="09:00" onchange="validateAndRun(this)" oninput="run()">
         </div>
         <div class="ios-item">
-            <label>🏃 提早下班 <span class="hint">(16:50 - 18:20)</span></label>
-            <input type="time" id="tEarly" min="16:50" max="18:20" oninput="run()" onchange="run()">
+            <label>🏃 提早下班 <span class="hint">(≥16:50)</span></label>
+            <input type="time" id="tEarly" onchange="validateAndRun(this)" oninput="run()">
         </div>
     </div>
 
@@ -78,6 +104,47 @@
 </div>
 
 <script>
+    let toastTimeout;
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 2500);
+    }
+
+    // 智慧防呆校正功能
+    function validateAndRun(inputElement) {
+        if (!inputElement.value) { run(); return; }
+        
+        let [h, m] = inputElement.value.split(':').map(Number);
+        let mins = h * 60 + m;
+        let corrected = null;
+        let alertMsg = "";
+
+        if (mins < 530) { 
+            corrected = "08:50"; 
+            alertMsg = "⚠️ 最早不可早於 08:50，已為您校正";
+        } else if (mins > 710 && mins < 770) {
+            // 落入午休時間，判斷靠近哪一邊
+            if (mins <= 740) { corrected = "11:50"; } 
+            else { corrected = "12:50"; }
+            alertMsg = "⚠️ 午休時間不計入，已為您自動避開";
+        } else if (mins > 1100) { 
+            corrected = "18:20"; 
+            alertMsg = "⚠️ 最晚不可超過 18:20，已為您校正";
+        }
+
+        if (corrected) {
+            inputElement.value = corrected;
+            showToast(alertMsg);
+        }
+        
+        run(); // 校正完畢後執行主計算
+    }
+
     function clearAll() {
         document.getElementById('tIn').value = "09:00";
         document.getElementById('tEarly').value = "";
@@ -86,14 +153,12 @@
 
     const toStr = (m) => `${Math.floor(m/60).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`;
 
-    // 時間常數定義
     const tBaseIn = 500;       // 08:20
     const tFlexEnd = 560;      // 09:20
     const tLunchStart = 710;   // 11:50
     const tLunchEnd = 770;     // 12:50
     const tEarliestOff = 1010; // 16:50
 
-    // 時間軸工具：往回推 (跳過午休)
     function walkBwd(startMin, durationMin) {
         let current = startMin, rem = durationMin;
         while (rem > 0) {
@@ -109,7 +174,6 @@
         return current;
     }
 
-    // 計算兩個時間點的「真實工時」
     function getWorkMinutes(start, end) {
         if (start >= end) return 0;
         let total = end - start;
@@ -119,7 +183,6 @@
         return total;
     }
 
-    // 將請假區間拆成陣列，並計算每段時數
     function getLeaveChunks(start, end) {
         let chunks = [];
         if (start < tLunchStart && end > start) {
@@ -174,7 +237,6 @@
             }
         }
 
-        // 渲染遲到 UI
         if (lateLeaveList.length > 0) {
             let rangesHtml = lateLeaveList.map(l => 
                 `<span class="badge">${toStr(l.s)} - ${toStr(l.e)} <span class="dur-tag">${l.h}h</span></span>`
