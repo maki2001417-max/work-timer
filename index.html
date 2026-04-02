@@ -20,10 +20,14 @@
             --gray: #8E8E93; --secondary: #E9E9EB; 
         }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; display: flex; justify-content: center; color: var(--text); }
-        .ios-card { background: var(--card); width: 100%; max-width: 400px; border-radius: 20px; padding: 20px; box-shadow: 0 8px 25px rgba(0,0,0,0.06); }
+        .ios-card { background: var(--card); width: 100%; max-width: 400px; border-radius: 20px; padding: 20px; box-shadow: 0 8px 25px rgba(0,0,0,0.06); position: relative; }
         
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        h2 { font-size: 22px; margin: 0; font-weight: 700; color: var(--primary); }
+        h2 { font-size: 22px; margin: 0; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 8px;}
+        
+        /* 版本號小徽章樣式 */
+        .version-badge { font-size: 12px; font-weight: 600; background: #E5F0FF; color: var(--primary); padding: 2px 8px; border-radius: 10px; font-family: monospace; letter-spacing: 0.5px;}
+
         .clear-btn { background: var(--secondary); color: #555; border: none; padding: 6px 12px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
 
         .ios-group { background: #F9F9F9; border-radius: 14px; padding: 0 15px; margin-bottom: 15px; }
@@ -70,7 +74,7 @@
 
 <div class="ios-card">
     <div class="header-row">
-        <h2>工時專家</h2>
+        <h2>工時專家 <span class="version-badge">v2.0</span></h2>
         <button class="clear-btn" onclick="clearAll()">重置</button>
     </div>
 
@@ -222,19 +226,16 @@
         let totalLateLeaveH = 0;
         let lateMins = 0;
         
-        // 【核心修正】判斷是否為大遲到 (11:50 之後)
         let isBigLate = (inMin > tLunchStart);
 
         if (inMin > tFlexEnd) {
             lateMins = inMin - tFlexEnd;
             if (!isBigLate) {
-                // 小遲到：往前請假補足彈性
                 totalLateLeaveH = Math.ceil(lateMins / 30) * 0.5;
                 shiftStart = inMin - totalLateLeaveH * 60; 
                 lateLeaveStart = shiftStart;
                 lateLeaveEnd = inMin;
             } else {
-                // 大遲到：鎖死 08:20 基準
                 shiftStart = tBaseIn; 
                 let missingWork = getWorkMinutes(tBaseIn, inMin);
                 totalLateLeaveH = Math.ceil(missingWork / 30) * 0.5;
@@ -264,12 +265,10 @@
             if (isFullDay) { document.getElementById('result').innerHTML = html; return; }
         }
 
-        // 【核心修正】下班時間渲染邏輯
         let target7, target8;
 
         if (isBigLate) {
-            // 大遲到：沒有 16:50！強制只有 17:20
-            target7 = target8 = tStandardOff; // 1040 (17:20)
+            target7 = target8 = tStandardOff; 
             
             html += `
             <div class="grid-2">
@@ -280,7 +279,6 @@
                 </div>
             </div>`;
         } else {
-            // 正常/小遲到：保留 7h 跟 8h 彈性推算
             target7 = Math.max(tEarliestOff, shiftStart + 7 * 60 + 60); 
             target8 = Math.max(tEarliestOff, shiftStart + 8 * 60 + 60);
             
@@ -329,9 +327,7 @@
                 }
             }
             
-            // 【核心修正】提早下班分析跟著連動
             if (isBigLate) {
-                // 大遲到只給看 17:20 的單一推算
                 html += generateLeaveInfo(target8, "標準班表 (17:20)");
             } else {
                 html += generateLeaveInfo(target7, "7h (最低)");
