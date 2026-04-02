@@ -72,14 +72,14 @@
 
 <div class="ios-card">
     <div class="header-row">
-        <h2>工時專家 <span class="version-badge">v2.1</span></h2>
+        <h2>工時專家 <span class="version-badge">v2.2</span></h2>
         <button class="clear-btn" onclick="clearAll()">重置</button>
     </div>
 
     <div class="ios-group">
         <div class="ios-item">
-            <label>🕗 上班刷卡 <span class="hint">(08:50 - 17:20)</span></label>
-            <input type="time" id="tIn" value="09:00" max="17:20" onchange="validateAndRun(this)" oninput="run()">
+            <label>🕗 上班刷卡 <span class="hint">(08:20起)</span></label>
+            <input type="time" id="tIn" value="09:00" max="17:20" min="08:20" onchange="validateAndRun(this)" oninput="run()">
         </div>
         <div class="ios-item">
             <label>🏃 提早下班 <span class="hint">(最晚 18:20)</span></label>
@@ -107,10 +107,10 @@
         let corrected = null;
         let alertMsg = "";
 
-        // v2.1 修正：拔除午休時間(11:50~12:49)的強制彈回機制，讓使用者可如實填寫
         if (inputElement.id === 'tIn') {
-            if (mins < 530) { 
-                corrected = "08:50"; alertMsg = "⚠️ 上班不可早於 08:50，已為您校正";
+            // 邊界修正：上班不可早於 08:20
+            if (mins < 500) { 
+                corrected = "08:20"; alertMsg = "⚠️ 上班不可早於 08:20，已為您校正";
             } else if (mins >= 1040) {
                 corrected = "17:20"; alertMsg = "⚠️ 已過標準下班時間，建議直接請全天假！";
             }
@@ -306,7 +306,15 @@
                 } else {
                     let missingWork = getWorkMinutes(earlyMin, targetOff);
                     let leaveH = Math.ceil(missingWork / 30) * 0.5;
-                    let leaveStart = walkBwd(targetOff, leaveH * 60);
+                    
+                    // 【核心修正：假單極限值錨定】
+                    // 不管下班時間延到多晚，假單最晚只能從 17:20 開始往前推
+                    let anchorOff = Math.min(targetOff, tStandardOff); // 1040 (17:20)
+                    let leaveSlipEnd = anchorOff;
+                    let leaveSlipStart = walkBwd(anchorOff, leaveH * 60);
+                    
+                    // 實際需要待到的時間，才是照著你彈性下班的時間去算
+                    let hitTime = walkBwd(targetOff, leaveH * 60);
 
                     return `
                     <div class="alert-box early" style="margin-bottom:10px;">
@@ -316,9 +324,9 @@
                         </div>
                         <div class="flex-row">
                             <span style="font-weight:600;">假單區間：</span>
-                            ${formatLeaveRanges(leaveStart, targetOff)}
+                            ${formatLeaveRanges(leaveSlipStart, leaveSlipEnd)}
                         </div>
-                        <div class="sub-hint">💡 請假後，只要待到 <b style="color:var(--primary)">${toStr(leaveStart)}</b> 即可達標。</div>
+                        <div class="sub-hint">💡 請假後，只要待到 <b style="color:var(--primary)">${toStr(hitTime)}</b> 即可達標。</div>
                     </div>`;
                 }
             }
