@@ -72,7 +72,7 @@
 
 <div class="ios-card">
     <div class="header-row">
-        <h2>工時專家 <span class="version-badge">v2.6</span></h2>
+        <h2>工時專家 <span class="version-badge">v2.7</span></h2>
         <button class="clear-btn" onclick="clearAll()">重置</button>
     </div>
 
@@ -109,7 +109,6 @@
             if (mins < 500) { corrected = "08:20"; alertMsg = "⚠️ 上班不可早於 08:20，已為您校正"; } 
             else if (mins >= 1040) { corrected = "17:20"; alertMsg = "⚠️ 已過標準下班時間，建議直接請全天假！"; }
         } else if (inputElement.id === 'tEarly') {
-            // 【v2.6 修復】將防呆預設值從 530 (08:50) 徹底改為 500 (08:20)
             let inMins = document.getElementById('tIn').value ? 
                 document.getElementById('tIn').value.split(':').map(Number).reduce((h, m) => h * 60 + m) : 500;
             if (mins < inMins) { corrected = document.getElementById('tIn').value; alertMsg = "⚠️ 提早下班不可早於上班時間！已為您校正"; } 
@@ -122,7 +121,6 @@
 
     function clearAll() { document.getElementById('tIn').value = "09:00"; document.getElementById('tEarly').value = ""; run(); }
 
-    // 【底層常數確認】tBaseIn 確實是 500 (08:20)，tFlexEnd 確實是 560 (09:20)
     const toStr = (m) => `${Math.floor(m/60).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`;
     const tBaseIn = 500, tFlexEnd = 560, tLunchStart = 710, tLunchEnd = 770, tEarliestOff = 1010, tStandardOff = 1040;
 
@@ -264,32 +262,11 @@
                     let missingWork = getWorkMinutes(earlyMin, targetOff);
                     let leaveH = Math.ceil(missingWork / 30) * 0.5;
                     
-                    let mLeaveH = 0;
-                    let aLeaveH = leaveH;
-                    let splitNote = "";
-
-                    if (!isBigLate) {
-                        // 【v2.6 確認】這段「早晚分切」演算法使用的也是 500 (tBaseIn = 08:20)
-                        let maxMorningH = Math.floor(getWorkMinutes(tBaseIn, shiftStart) / 30) * 0.5;
-                        mLeaveH = Math.min(leaveH, maxMorningH);
-                        aLeaveH = leaveH - mLeaveH;
-                    }
-
-                    let slipsHtml = "";
-
-                    if (mLeaveH > 0) {
-                        let mSlipStart = walkBwd(shiftStart, mLeaveH * 60);
-                        slipsHtml += formatLeaveRanges(mSlipStart, shiftStart, isMuted);
-                        let noteColor = isMuted ? "#8E8E93" : "var(--primary)";
-                        splitNote = `<div style="font-size:12px; font-weight:700; color:${noteColor}; margin-bottom:6px;">✨ 已啟用早晚分段請假 (避開17:20極限)</div>`;
-                    }
-                    
-                    if (aLeaveH > 0) {
-                        let anchorOff = Math.min(targetOff, tStandardOff); 
-                        let aSlipEnd = anchorOff;
-                        let aSlipStart = walkBwd(anchorOff, aLeaveH * 60);
-                        slipsHtml += formatLeaveRanges(aSlipStart, aSlipEnd, isMuted);
-                    }
+                    // 【v2.7 修復】拔除自作聰明的早晚雙切，回歸絕對極限推算！
+                    // 直接將所有假單鎖定在 17:20 往回扣
+                    let anchorOff = Math.min(targetOff, tStandardOff); // 1040 (17:20)
+                    let leaveSlipEnd = anchorOff;
+                    let leaveSlipStart = walkBwd(anchorOff, leaveH * 60);
 
                     let hitTime = walkBwd(targetOff, leaveH * 60);
 
@@ -304,10 +281,9 @@
                             <span style="${titleStyle}">🎯 目標 ${label}</span>
                             <span style="${titleStyle}">請假 <span class="hl" style="${dangerStyle}">${leaveH}</span>h</span>
                         </div>
-                        ${splitNote}
                         <div class="flex-row">
                             <span style="font-weight:600; ${hintStyle}">假單區間：</span>
-                            <div class="range-group">${slipsHtml}</div>
+                            <div class="range-group">${formatLeaveRanges(leaveSlipStart, leaveSlipEnd, isMuted)}</div>
                         </div>
                         <div class="sub-hint" style="${hintStyle}">💡 請假後，只要待到 <b style="color:${isMuted?'#8E8E93':'var(--primary)'}">${toStr(hitTime)}</b> 即可達標。</div>
                     </div>`;
