@@ -38,7 +38,7 @@
         .box-primary { background: #fff; border: 2px solid var(--primary); border-radius: 16px; padding: 20px; text-align: center; margin-bottom: 8px; box-shadow: 0 6px 16px rgba(0,122,255,0.15); }
         .box-primary .lbl { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 5px; }
         .box-primary .val { font-size: 40px; font-weight: 800; color: var(--primary); line-height: 1.1; }
-        .box-secondary { text-align: center; font-size: 13px; color: #8E8E93; margin-bottom: 20px; font-weight: 500; }
+        .box-secondary { text-align: center; font-size: 13px; color: #8E8E93; font-weight: 500; }
         .box-secondary b { color: #555; }
         
         .alert-box { border-radius: 14px; padding: 12px 15px; margin-bottom: 12px; font-size: 14px; line-height: 1.5; }
@@ -72,7 +72,7 @@
 
 <div class="ios-card">
     <div class="header-row">
-        <h2>工時專家 <span class="version-badge">v2.4</span></h2>
+        <h2>工時專家 <span class="version-badge">v2.5</span></h2>
         <button class="clear-btn" onclick="clearAll()">重置</button>
     </div>
 
@@ -227,6 +227,7 @@
 
         let target7, target8;
 
+        // V2.5 顯示邏輯：8h 置中放大，7h 往下移動
         if (isBigLate) {
             target7 = target8 = tStandardOff; 
             html += `
@@ -244,16 +245,12 @@
                 <div class="lbl">✨ 標準下班時間 (滿 8h)</div>
                 <div class="val blue">${toStr(target8)}</div>
                 ${target8 === tEarliestOff && (shiftStart + 8 * 60 + 60) < tEarliestOff ? '<div class="hint" style="margin-top:5px">受限於最早下班規定 16:50</div>' : ''}
-            </div>
-            <div class="box-secondary">
-                🤫 小聲說：如果今天只上滿 7h，<b>${toStr(target7)}</b> 就能閃人了
-                ${target7 === tEarliestOff && (shiftStart + 7 * 60 + 60) < tEarliestOff ? ' <span style="font-size:11px">(受限16:50)</span>' : ''}
             </div>`;
         }
 
         if (tEarly) {
             let earlyMin = Math.max(toMin(tEarly), inMin); 
-            html += `<div class="section-title">🏃 提早分析 (${toStr(earlyMin)})</div>`;
+            html += `<div class="section-title" style="margin-top:20px; margin-bottom:10px; font-weight:700; color:#333; font-size:15px;">🏃 提早分析 (${toStr(earlyMin)})</div>`;
 
             function generateLeaveInfo(targetOff, label, isMuted = false) {
                 if (earlyMin >= targetOff) {
@@ -266,14 +263,11 @@
                     let missingWork = getWorkMinutes(earlyMin, targetOff);
                     let leaveH = Math.ceil(missingWork / 30) * 0.5;
                     
-                    // v2.4 核心：早晚雙切最佳化演算法
                     let mLeaveH = 0;
                     let aLeaveH = leaveH;
                     let splitNote = "";
 
-                    // 只有未被強制鎖死彈性(小遲到/正常) 才能將假單往前推算到 08:20
                     if (!isBigLate) {
-                        // 算出 08:20 到你「虛擬上班起點」之間，還有多少 0.5h 的額度可以使用
                         let maxMorningH = Math.floor(getWorkMinutes(tBaseIn, shiftStart) / 30) * 0.5;
                         mLeaveH = Math.min(leaveH, maxMorningH);
                         aLeaveH = leaveH - mLeaveH;
@@ -281,14 +275,13 @@
 
                     let slipsHtml = "";
 
-                    // 1. 如果有額度分到早上，產生早上的假單
                     if (mLeaveH > 0) {
                         let mSlipStart = walkBwd(shiftStart, mLeaveH * 60);
                         slipsHtml += formatLeaveRanges(mSlipStart, shiftStart, isMuted);
-                        splitNote = `<div style="font-size:12px; font-weight:700; color:var(--primary); margin-bottom:6px;">✨ 已啟用早晚分段請假 (避開17:20極限)</div>`;
+                        let noteColor = isMuted ? "#8E8E93" : "var(--primary)";
+                        splitNote = `<div style="font-size:12px; font-weight:700; color:${noteColor}; margin-bottom:6px;">✨ 已啟用早晚分段請假 (避開17:20極限)</div>`;
                     }
                     
-                    // 2. 剩下的假單放到下午，並鎖死 17:20 邊界
                     if (aLeaveH > 0) {
                         let anchorOff = Math.min(targetOff, tStandardOff); 
                         let aSlipEnd = anchorOff;
@@ -322,8 +315,25 @@
             if (isBigLate) {
                 html += generateLeaveInfo(target8, "標準班表 (17:20)");
             } else {
+                // 先輸出 8 小時的主要分析
                 html += generateLeaveInfo(target8, "8h (標準)");
+                
+                // 再輸出 7 小時的提示與分析 (緊密結合)
+                html += `
+                <div class="box-secondary" style="margin-top: 25px; margin-bottom: 10px;">
+                    🤫 小聲說：如果今天只上滿 7h，<b>${toStr(target7)}</b> 就能閃人了
+                    ${target7 === tEarliestOff && (shiftStart + 7 * 60 + 60) < tEarliestOff ? ' <span style="font-size:11px">(受限16:50)</span>' : ''}
+                </div>`;
                 html += generateLeaveInfo(target7, "7h (最低底線)", true);
+            }
+        } else {
+            // 如果沒有提早下班的輸入，只在最下面單純顯示 7 小時小聲說
+            if (!isBigLate) {
+                html += `
+                <div class="box-secondary" style="margin-top: 15px; margin-bottom: 10px;">
+                    🤫 小聲說：如果今天只上滿 7h，<b>${toStr(target7)}</b> 就能閃人了
+                    ${target7 === tEarliestOff && (shiftStart + 7 * 60 + 60) < tEarliestOff ? ' <span style="font-size:11px">(受限16:50)</span>' : ''}
+                </div>`;
             }
         }
 
