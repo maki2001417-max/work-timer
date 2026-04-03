@@ -72,7 +72,7 @@
 
 <div class="ios-card">
     <div class="header-row">
-        <h2>工時專家 <span class="version-badge">v2.7</span></h2>
+        <h2>工時專家 <span class="version-badge">v2.8</span></h2>
         <button class="clear-btn" onclick="clearAll()">重置</button>
     </div>
 
@@ -262,13 +262,13 @@
                     let missingWork = getWorkMinutes(earlyMin, targetOff);
                     let leaveH = Math.ceil(missingWork / 30) * 0.5;
                     
-                    // 【v2.7 修復】拔除自作聰明的早晚雙切，回歸絕對極限推算！
-                    // 直接將所有假單鎖定在 17:20 往回扣
-                    let anchorOff = Math.min(targetOff, tStandardOff); // 1040 (17:20)
-                    let leaveSlipEnd = anchorOff;
-                    let leaveSlipStart = walkBwd(anchorOff, leaveH * 60);
-
-                    let hitTime = walkBwd(targetOff, leaveH * 60);
+                    // 【v2.8 重大回歸】拋棄無謂的重疊和早晚雙切
+                    // 假單唯一鐵則：直接從你的「目標下班時間」往回切
+                    let leaveSlipEnd = targetOff;
+                    let leaveSlipStart = walkBwd(targetOff, leaveH * 60);
+                    
+                    // 你的實體下班時間，就是假單開始的那一刻！
+                    let hitTime = leaveSlipStart;
 
                     let boxStyle = isMuted ? "background:#FAFAFA; border:1px dashed #D1D1D6;" : "background:#fff; border:1px solid #E5E5EA;";
                     let titleStyle = isMuted ? "color:#8E8E93;" : "color:#D07B00;";
