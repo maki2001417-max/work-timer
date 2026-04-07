@@ -39,7 +39,6 @@
         .box-primary .lbl { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 5px; }
         .box-primary .val { font-size: 40px; font-weight: 800; color: var(--primary); line-height: 1.1; }
         .box-secondary { text-align: center; font-size: 13px; color: #8E8E93; font-weight: 500; }
-        .box-secondary b { color: #555; }
         
         .alert-box { border-radius: 14px; padding: 12px 15px; margin-bottom: 12px; font-size: 14px; line-height: 1.5; }
         .alert-box.late { background: var(--danger-bg); border-left: 5px solid var(--danger); }
@@ -55,35 +54,24 @@
         .flex-row { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 8px; font-size: 14px;}
         .range-group { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
         .dur-tag { color: #E65100; font-size: 13px; margin-left: 6px; background: rgba(230,81,0,0.1); padding: 2px 5px; border-radius: 4px; font-family: -apple-system, sans-serif;}
-
-        #toast {
-            position: fixed; top: 25px; left: 50%; transform: translateX(-50%) translateY(-20px);
-            background: rgba(0, 0, 0, 0.85); color: white; padding: 12px 20px; border-radius: 20px;
-            font-size: 14px; font-weight: 600; opacity: 0; pointer-events: none;
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); z-index: 9999;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2); white-space: nowrap;
-        }
-        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     </style>
 </head>
 <body>
 
-<div id="toast">提示訊息</div>
-
 <div class="ios-card">
     <div class="header-row">
-        <h2>工時專家 <span class="version-badge">v3.2</span></h2>
+        <h2>工時專家 <span class="version-badge">v3.3</span></h2>
         <button class="clear-btn" onclick="clearAll()">重置</button>
     </div>
 
     <div class="ios-group">
         <div class="ios-item">
             <label>🕗 上班刷卡 <span class="hint">(08:20起)</span></label>
-            <input type="time" id="tIn" value="09:00" max="17:20" min="08:20" onchange="validateAndRun(this)" oninput="run()">
+            <input type="time" id="tIn" value="09:00" max="17:20" min="08:20" onchange="run()">
         </div>
         <div class="ios-item">
             <label>🏃 提早下班 <span class="hint">(沒收彈性)</span></label>
-            <input type="time" id="tEarly" max="18:20" onchange="validateAndRun(this)" oninput="run()">
+            <input type="time" id="tEarly" max="18:20" onchange="run()">
         </div>
     </div>
 
@@ -91,38 +79,8 @@
 </div>
 
 <script>
-    let toastTimeout;
-    function showToast(msg) {
-        const toast = document.getElementById('toast');
-        toast.textContent = msg; toast.classList.add('show');
-        clearTimeout(toastTimeout);
-        toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 2500);
-    }
-
-    function validateAndRun(inputElement) {
-        if (!inputElement.value) { run(); return; }
-        let [h, m] = inputElement.value.split(':').map(Number);
-        let mins = h * 60 + m;
-        let corrected = null, alertMsg = "";
-
-        if (inputElement.id === 'tIn') {
-            if (mins < 500) { corrected = "08:20"; alertMsg = "⚠️ 上班不可早於 08:20，已為您校正"; } 
-            else if (mins >= 1040) { corrected = "17:20"; alertMsg = "⚠️ 已過標準下班時間，建議直接請全天假！"; }
-        } else if (inputElement.id === 'tEarly') {
-            let inMins = document.getElementById('tIn').value ? 
-                document.getElementById('tIn').value.split(':').map(Number).reduce((h, m) => h * 60 + m) : 500;
-            if (mins < inMins) { corrected = document.getElementById('tIn').value; alertMsg = "⚠️ 提早下班不可早於上班時間！已為您校正"; } 
-            else if (mins > 1100) { corrected = "18:20"; alertMsg = "⚠️ 最晚不可超過 18:20，已自動校正"; }
-        }
-
-        if (corrected) { inputElement.value = corrected; showToast(alertMsg); }
-        run(); 
-    }
-
-    function clearAll() { document.getElementById('tIn').value = "09:00"; document.getElementById('tEarly').value = ""; run(); }
-
     const toStr = (m) => `${Math.floor(m/60).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`;
-    const tBaseIn = 500, tFlexEnd = 560, tLunchStart = 710, tLunchEnd = 770, tEarliestOff = 1010, tStandardOff = 1040;
+    const tBaseIn = 500, tFlexEnd = 560, tLunchStart = 710, tLunchEnd = 770, tStandardOff = 1040;
 
     function walkBwd(startMin, durationMin) {
         let current = startMin, rem = durationMin;
@@ -130,16 +88,6 @@
             if (current > tLunchEnd) { let step = Math.min(rem, current - tLunchEnd); current -= step; rem -= step; } 
             else if (current > tLunchStart && current <= tLunchEnd) { current = tLunchStart; } 
             else { current -= rem; rem = 0; }
-        }
-        return current;
-    }
-
-    function walkFwd(startMin, durationMin) {
-        let current = startMin, rem = durationMin;
-        while (rem > 0) {
-            if (current < tLunchStart) { let step = Math.min(rem, tLunchStart - current); current += step; rem -= step; } 
-            else if (current >= tLunchStart && current < tLunchEnd) { current = tLunchEnd; } 
-            else { current += rem; rem = 0; }
         }
         return current;
     }
@@ -163,206 +111,67 @@
             if (s !== end) chunks.push({ s: s, e: end, h: (end - s) / 60 });
         }
         if (chunks.length === 0) return `<span class="badge">無</span>`;
-
-        let canSplit = chunks.every(c => Math.round(c.h * 100) % 50 === 0);
         let badgeStyle = isMuted ? "background:#E5E5EA; color:#8E8E93;" : "";
         let durStyle = isMuted ? "background:#D1D1D6; color:#fff;" : "";
-
-        if (canSplit) {
-            return chunks.map(c => 
-                `<span class="badge" style="${badgeStyle}">${toStr(c.s)} - ${toStr(c.e)} <span class="dur-tag" style="${durStyle}">${c.h}h</span></span>`
-            ).join('');
-        } else {
-            let totalH = getWorkMinutes(start, end) / 60;
-            let mergeBg = isMuted ? "#F2F2F7" : "#FFF4E5";
-            let mergeBorder = isMuted ? "#E5E5EA" : "#FFE0B2";
-            let mergeText = isMuted ? "#8E8E93" : "#E65100";
-            return `<span class="badge" style="background:${mergeBg}; border:1px solid ${mergeBorder}; color:${mergeText}">${toStr(start)} - ${toStr(end)} <span class="dur-tag" style="background:#fff; color:${mergeText}; border:1px solid ${mergeBorder}">${totalH}h</span></span>`;
-        }
+        return chunks.map(c => `<span class="badge" style="${badgeStyle}">${toStr(c.s)} - ${toStr(c.e)} <span class="dur-tag" style="${durStyle}">${c.h}h</span></span>`).join('');
     }
 
-    // V3.2 核心：HR陷阱沒收彈性演算法 (強制鎖定 08:20 - 17:20)
-    function calcSnapBackLeave(inMin, earlyMin, targetH) {
-        // 如果要 8h，基準是 17:20；如果要 7h，假單的計算基準可以當作 16:20 
-        let targetOffForGap = targetH === 8 ? tStandardOff : tStandardOff - 60; 
-
-        // 1. 早上缺口：因為沒收彈性，從 08:20 開始算，遲到多久請多久
-        let mLeaveMins = 0;
-        let mSlipStart = tBaseIn;
-        let mSlipEnd = tBaseIn;
-        if (inMin > tBaseIn) {
-            let mGap = inMin - tBaseIn;
-            mLeaveMins = Math.ceil(mGap / 30) * 30; // 無條件進位至30分
-            mSlipEnd = tBaseIn + mLeaveMins;
-        }
-
-        // 2. 下午缺口：從 17:20 (或16:20) 往回算，早走多久請多久
-        let aLeaveMins = 0;
-        let aSlipStart = targetOffForGap;
-        let aSlipEnd = targetOffForGap;
-        if (earlyMin < targetOffForGap) {
-            let aGap = targetOffForGap - earlyMin;
-            aLeaveMins = Math.ceil(aGap / 30) * 30; // 無條件進位至30分
-            aSlipStart = targetOffForGap - aLeaveMins;
-        }
-
-        // 3. 實際能離開肉身的時間 (保證不與假單重疊)
-        let effectiveOut = Math.min(earlyMin, aSlipStart);
-
-        return {
-            mLeaveH: mLeaveMins / 60,
-            mSlipStart: mSlipStart,
-            mSlipEnd: mSlipEnd,
-            aLeaveH: aLeaveMins / 60,
-            aSlipStart: aSlipStart,
-            aSlipEnd: aSlipEnd,
-            reqLeaveH: (mLeaveMins + aLeaveMins) / 60,
-            hitTime: effectiveOut
-        };
-    }
+    function clearAll() { document.getElementById('tIn').value = "09:00"; document.getElementById('tEarly').value = ""; run(); }
 
     function run() {
-        const tIn = document.getElementById('tIn').value;
-        const tEarly = document.getElementById('tEarly').value;
-        if (!tIn) return; 
-
-        const toMin = (v) => { let [h, m] = v.split(':').map(Number); return h * 60 + m; };
-        const inMin = toMin(tIn);
+        const inStr = document.getElementById('tIn').value;
+        const earlyStr = document.getElementById('tEarly').value;
+        if (!inStr) return;
+        const inMin = inStr.split(':').map(Number).reduce((h, m) => h * 60 + m);
         
-        let html = "", shiftStart = inMin, lateLeaveStart = null, lateLeaveEnd = null, totalLateLeaveH = 0, lateMins = 0;
-        let isBigLate = (inMin > tLunchStart);
+        let html = "";
+        let shiftStart = inMin;
 
-        if (inMin > tFlexEnd) {
-            lateMins = inMin - tFlexEnd;
-            if (!isBigLate) {
-                totalLateLeaveH = Math.ceil(lateMins / 30) * 0.5;
-                shiftStart = inMin - totalLateLeaveH * 60; 
-                lateLeaveStart = shiftStart; lateLeaveEnd = inMin;
-            } else {
-                shiftStart = tBaseIn; 
-                totalLateLeaveH = Math.ceil(getWorkMinutes(tBaseIn, inMin) / 30) * 0.5;
-                lateLeaveStart = tBaseIn; lateLeaveEnd = walkFwd(tBaseIn, totalLateLeaveH * 60);
+        // 非提早走情況下的彈性計算
+        if (!earlyStr) {
+            if (inMin > tFlexEnd) {
+                let lateMins = inMin - tFlexEnd;
+                let totalLateLeaveH = Math.ceil(lateMins / 30) * 0.5;
+                shiftStart = inMin - totalLateLeaveH * 60;
+                html += `<div class="alert-box late"><div class="alert-title red"><span>⚠️ 遲到提醒</span><span>請假 <span class="hl">${totalLateLeaveH}</span>h</span></div><div class="flex-row"><span style="font-weight:600;">假單區間：</span><div class="range-group">${formatLeaveRanges(shiftStart, inMin)}</div></div></div>`;
             }
-        }
-
-        if (totalLateLeaveH > 0 && !tEarly) {
-            // 如果沒填提早走，正常顯示遲到警告
-            let isFullDay = (inMin >= 1040); 
-            let hintMsg = isFullDay ? "💡 已達標準下班時間 17:20，請直接填寫整天假單 (8h)。" : 
-                          (isBigLate ? "💡 曠職上午喪失彈性，由標準班表 08:20 往後請。" : "💡 彈性內扣除假單後，以此推算下班時間。");
-
-            html += `
-            <div class="alert-box late">
-                <div class="alert-title red">
-                    <span>${isFullDay ? '🚨 需請全天假' : `⚠️ 遲到 ${lateMins} 分鐘`}</span>
-                    <span>請假 <span class="hl">${totalLateLeaveH}</span>h</span>
-                </div>
-                <div class="flex-row">
-                    <span style="font-weight:600;">假單區間：</span>
-                    <div class="range-group">${formatLeaveRanges(lateLeaveStart, lateLeaveEnd)}</div>
-                </div>
-                <div class="sub-hint">${hintMsg}</div>
-            </div>`;
-            if (isFullDay) { document.getElementById('result').innerHTML = html; return; }
-        }
-
-        let target7, target8;
-
-        // V3.2 邏輯：只要填了 tEarly，彈性就直接蒸發
-        if (isBigLate || tEarly) {
-            target7 = target8 = tStandardOff; 
-            html += `
-            <div class="box-primary" style="background: #FFF4E5; border-color: #FFCC80; box-shadow:none;">
-                <div class="lbl" style="color:#E65100; font-size:14px;">🚨 已沒收彈性資格</div>
-                <div class="val" style="color:#E65100;">17:20</div>
-                <div class="hint" style="color:#E65100; margin-top:8px; font-weight:600;">強制套用 08:20-17:20 標準班表</div>
-            </div>`;
+            let target8 = Math.max(1010, shiftStart + 480 + 60);
+            let target7 = Math.max(1010, shiftStart + 420 + 60);
+            html += `<div class="box-primary"><div class="lbl">✨ 彈性下班時間 (滿 8h)</div><div class="val blue">${toStr(target8)}</div></div><div class="box-secondary">🤫 小聲說：如果今天只上滿 7h，<b>${toStr(target7)}</b> 就能閃人了</div>`;
         } else {
-            target7 = Math.max(tEarliestOff, shiftStart + 7 * 60 + 60); 
-            target8 = Math.max(tEarliestOff, shiftStart + 8 * 60 + 60);
-            
-            html += `
-            <div class="box-primary">
-                <div class="lbl">✨ 彈性下班時間 (滿 8h)</div>
-                <div class="val blue">${toStr(target8)}</div>
-                ${target8 === tEarliestOff && (shiftStart + 8 * 60 + 60) < tEarliestOff ? '<div class="hint" style="margin-top:5px">受限於最早下班規定 16:50</div>' : ''}
-            </div>`;
-        }
+            // 提早走：沒收彈性，基準固定 17:20
+            const earlyMin = earlyStr.split(':').map(Number).reduce((h, m) => h * 60 + m);
+            html += `<div class="box-primary" style="background:#FFF4E5; border-color:#FFCC80;"><div class="lbl" style="color:#E65100;">🚨 已沒收彈性資格</div><div class="val" style="color:#E65100;">17:20</div><div class="hint" style="color:#E65100; margin-top:8px; font-weight:600;">強制套用 08:20-17:20 標準班表</div></div><div class="section-title" style="margin-top:20px; margin-bottom:10px; font-weight:700; color:#333; font-size:15px;">🏃 提早分析 (${toStr(earlyMin)})</div>`;
 
-        if (tEarly) {
-            let earlyMin = Math.max(toMin(tEarly), inMin); 
-            html += `<div class="section-title" style="margin-top:20px; margin-bottom:10px; font-weight:700; color:#333; font-size:15px;">🏃 提早分析 (${toStr(earlyMin)})</div>`;
-
-            function generateLeaveInfo(targetH, label, isMuted = false) {
-                let sol = calcSnapBackLeave(inMin, earlyMin, targetH);
+            [8, 7].forEach(h => {
+                let isMuted = (h === 7);
+                let morningLeaveH = inMin > tBaseIn ? Math.ceil((inMin - tBaseIn) / 30) * 0.5 : 0;
                 
-                // 如果計算出來不需要請假 (代表待夠晚了)
-                if (sol.reqLeaveH === 0) {
-                    if (isMuted) return `<div class="alert-box" style="background:#F2F2F7; color:#8E8E93; font-weight:600; margin-bottom:10px; text-align:center; padding: 10px; border: 1px dashed #D1D1D6;">🤫 若只求滿 ${label}，其實已經達標免請假了</div>`;
-                    else return `<div class="alert-box" style="background:var(--success-bg); border-left:5px solid var(--success); color:#1B5E20; font-weight:700; margin-bottom:10px;">✨ 已滿足 ${label}，<span style="text-decoration: underline; text-underline-offset: 3px;">無須請假！</span></div>`;
-                }
-
-                let slipsHtml = "";
-                let splitNote = "";
-
-                // 處理因為喪失彈性，被迫生出來的「早上懲罰假單」
-                if (sol.mLeaveH > 0) {
-                    slipsHtml += formatLeaveRanges(sol.mSlipStart, sol.mSlipEnd, isMuted);
-                    let noteColor = isMuted ? "#8E8E93" : "var(--danger)";
-                    splitNote = `<div style="font-size:12px; font-weight:700; color:${noteColor}; margin-bottom:6px;">⚠️ 沒收彈性：需補請早上遲到時數</div>`;
-                }
+                // 下午請假計算：一律從 17:20 往前扣
+                let workNeededMins = h * 60;
+                let actualWorkMins = getWorkMinutes(inMin, earlyMin);
+                let totalMissingMins = Math.max(0, workNeededMins - actualWorkMins);
+                let totalLeaveH = Math.ceil(totalMissingMins / 30) * 0.5;
                 
-                // 處理下午真實想提早走的假單
-                if (sol.aLeaveH > 0) {
-                    slipsHtml += formatLeaveRanges(sol.aSlipStart, sol.aSlipEnd, isMuted);
-                }
+                // 必須包含早上遲到的補償
+                let mLeaveH = Math.min(totalLeaveH, morningLeaveH);
+                let aLeaveH = Math.max(0, totalLeaveH - mLeaveH);
+
+                let aSlipStart = tStandardOff - aLeaveH * 60;
+                let hitTime = Math.min(earlyMin, aSlipStart);
 
                 let boxStyle = isMuted ? "background:#FAFAFA; border:1px dashed #D1D1D6;" : "background:#fff; border:1px solid #E5E5EA;";
                 let titleStyle = isMuted ? "color:#8E8E93;" : "color:#D07B00;";
                 let dangerStyle = isMuted ? "color:#8E8E93;" : "color:var(--danger);";
-                let hintStyle = isMuted ? "color:#8E8E93;" : "color:#666;";
 
-                return `
-                <div class="alert-box early" style="${boxStyle} margin-bottom:10px;">
-                    <div class="alert-title">
-                        <span style="${titleStyle}">🎯 目標 ${label}</span>
-                        <span style="${titleStyle}">共請假 <span class="hl" style="${dangerStyle}">${sol.reqLeaveH}</span>h</span>
-                    </div>
-                    ${splitNote}
-                    <div class="flex-row">
-                        <span style="font-weight:600; ${hintStyle}">假單區間：</span>
-                        <div class="range-group">${slipsHtml}</div>
-                    </div>
-                    <div class="sub-hint" style="${hintStyle}">💡 由於假單不可重疊實體工作，請在 <b style="color:${isMuted?'#8E8E93':'var(--primary)'}">${toStr(sol.hitTime)}</b> 刷卡下班。</div>
-                </div>`;
-            }
-            
-            html += generateLeaveInfo(8, "8h (標準)");
-            html += `
-            <div class="box-secondary" style="margin-top: 25px; margin-bottom: 10px;">
-                🤫 小聲說：如果今天只上滿 7h，<b>${toStr(tStandardOff - 60)}</b> 就能閃人了
-            </div>`;
-            html += generateLeaveInfo(7, "7h (最低底線)", true);
-            
-        } else {
-            if (!isBigLate) {
-                html += `
-                <div class="box-secondary" style="margin-top: 15px; margin-bottom: 10px;">
-                    🤫 小聲說：如果今天只上滿 7h，<b>${toStr(target7)}</b> 就能閃人了
-                    ${target7 === tEarliestOff && (shiftStart + 7 * 60 + 60) < tEarliestOff ? ' <span style="font-size:11px">(受限16:50)</span>' : ''}
-                </div>`;
-            }
+                if (isMuted) html += `<div class="box-secondary" style="margin-top:25px; margin-bottom:10px;">🤫 小聲說：如果今天只上滿 7h，<b>16:20</b> (不請假) 或搭配假單於 <b>17:20</b> 結算</div>`;
+
+                html += `<div class="alert-box early" style="${boxStyle}"><div class="alert-title"><span style="${titleStyle}">🎯 目標 ${h}h</span><span style="${titleStyle}">共請假 <span class="hl" style="${dangerStyle}">${totalLeaveH}</span>h</span></div><div class="flex-row"><span style="font-weight:600; color:${isMuted?'#8E8E93':'#666'}">假單區間：</span><div class="range-group">${mLeaveH?formatLeaveRanges(tBaseIn, tBaseIn+mLeaveH*60, isMuted):''}${formatLeaveRanges(tStandardOff - aLeaveH*60, tStandardOff, isMuted)}</div></div><div class="sub-hint" style="color:${isMuted?'#8E8E93':'#666'}">💡 假單鎖定 17:20 基準，請在 <b style="color:${isMuted?'#8E8E93':'var(--primary)'}">${toStr(hitTime)}</b> 刷卡下班。</div></div>`;
+            });
         }
-
         document.getElementById('result').innerHTML = html;
     }
-
-    document.querySelectorAll('input[type="time"]').forEach(input => {
-        input.addEventListener('keydown', function(e) { if (e.key === 'Enter') this.blur(); });
-    });
-
     run();
 </script>
-
 </body>
 </html>
